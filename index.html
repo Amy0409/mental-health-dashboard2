@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mental Health Survey Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-page: #f5f4f0;
+      --bg-card: #ffffff;
+      --bg-metric: #f0eeea;
+      --text-primary: #1a1a18;
+      --text-secondary: #6b6a65;
+      --border: rgba(0,0,0,0.1);
+      --grid: rgba(0,0,0,0.06);
+      --radius-md: 8px;
+      --radius-lg: 14px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-page: #1a1a18;
+        --bg-card: #232321;
+        --bg-metric: #2c2c2a;
+        --text-primary: #f0eeea;
+        --text-secondary: #9a9994;
+        --border: rgba(255,255,255,0.1);
+        --grid: rgba(255,255,255,0.07);
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .header { margin-bottom: 2rem; }
+    .header-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #185FA5;
+      background: #E6F1FB;
+      padding: 3px 10px;
+      border-radius: 99px;
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -.02em;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+    .header p { font-size: 14px; color: var(--text-secondary); margin-top: 6px; }
+
+    /* ── Metric cards ── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 1.5rem;
+    }
+    .metric {
+      background: var(--bg-metric);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+    }
+    .metric-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .metric-value {
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -.02em;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .metric-sub { font-size: 11px; color: var(--text-secondary); margin-top: 5px; }
+
+    /* ── Chart grid ── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .chart-card {
+      background: var(--bg-card);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+    }
+    .chart-card.full { grid-column: 1 / -1; }
+    .chart-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .chart-sub { font-size: 11px; color: var(--text-secondary); margin-top: 3px; margin-bottom: 14px; }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+    /* ── Insights ── */
+    .insights-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      margin-top: 4px;
+    }
+    .insights {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px;
+      margin-bottom: 2rem;
+    }
+    .insight {
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      border-left: 3px solid;
+    }
+    .insight.warn  { background: #FAEEDA; border-color: #EF9F27; }
+    .insight.info  { background: #E6F1FB; border-color: #378ADD; }
+    .insight.good  { background: #EAF3DE; border-color: #639922; }
+    .insight.danger{ background: #FCEBEB; border-color: #E24B4A; }
+
+    .insight-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-bottom: 6px;
+    }
+    .insight.warn   .insight-tag { background: #FAC775; color: #412402; }
+    .insight.info   .insight-tag { background: #B5D4F4; color: #042C53; }
+    .insight.good   .insight-tag { background: #C0DD97; color: #173404; }
+    .insight.danger .insight-tag { background: #F7C1C1; color: #501313; }
+
+    .insight-text { font-size: 12px; line-height: 1.6; }
+    .insight.warn   .insight-text { color: #633806; }
+    .insight.info   .insight-text { color: #0C447C; }
+    .insight.good   .insight-text { color: #27500A; }
+    .insight.danger .insight-text { color: #791F1F; }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding-top: 1rem;
+      border-top: 0.5px solid var(--border);
+    }
+
+    @media (max-width: 640px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-card.full { grid-column: 1; }
+      .header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-tag">Mental Health Research</div>
+    <h1>Mental Health Survey — Descriptive Statistics</h1>
+    <p>261,328 respondents &bull; 17 countries &bull; Gender, occupation, treatment & coping behaviour</p>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Total respondents</div>
+      <div class="metric-value">261K</div>
+      <div class="metric-sub">Across 17 countries</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Seeking treatment</div>
+      <div class="metric-value">49.1%</div>
+      <div class="metric-sub">128,370 individuals</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Coping struggles</div>
+      <div class="metric-value">46.7%</div>
+      <div class="metric-sub">122,077 respondents</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">High mood swings</div>
+      <div class="metric-value">31.3%</div>
+      <div class="metric-sub">81,920 respondents</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Family history</div>
+      <div class="metric-value">38%</div>
+      <div class="metric-sub">99,347 respondents</div>
+    </div>
+  </div>
+
+  <!-- Row 1 -->
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <div class="chart-title">Gender distribution</div>
+      <div class="chart-sub">88.3% male — significant survey skew</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#3266ad"></span>Male 88.3%</span>
+        <span><span class="legend-dot" style="background:#D4537E"></span>Female 11.7%</span>
+      </div>
+      <div style="position:relative;height:200px;">
+        <canvas id="genderChart" role="img" aria-label="Donut chart: Male 230,614 (88.3%), Female 30,714 (11.7%)">Male: 230614, Female: 30714</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Treatment rate by gender</div>
+      <div class="chart-sub">Women seek treatment 23 pp more than men</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#3266ad"></span>Treated</span>
+        <span><span class="legend-dot" style="background:#B5D4F4"></span>Not treated</span>
+      </div>
+      <div style="position:relative;height:200px;">
+        <canvas id="treatGenderChart" role="img" aria-label="Stacked bar: Female treated 69.4%, Male treated 46.4%">Female treatment 69.4%, Male 46.4%</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Occupation breakdown</div>
+      <div class="chart-sub">Housewives & corporate workers lead at ~23% each</div>
+      <div style="position:relative;height:240px;">
+        <canvas id="occChart" role="img" aria-label="Horizontal bar chart of 5 occupation groups">Housewife 60081, Corporate 55622, Student 54207, Others 47428, Business 43990</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Mood swing severity</div>
+      <div class="chart-sub">Roughly equal thirds across all levels</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#E24B4A"></span>High 31.3%</span>
+        <span><span class="legend-dot" style="background:#EF9F27"></span>Medium 34.5%</span>
+        <span><span class="legend-dot" style="background:#639922"></span>Low 34.1%</span>
+      </div>
+      <div style="position:relative;height:240px;">
+        <canvas id="moodChart" role="img" aria-label="Pie chart: High 81920, Medium 90215, Low 89193">High: 81920, Medium: 90215, Low: 89193</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card full">
+      <div class="chart-title">Days spent indoors</div>
+      <div class="chart-sub">Distribution of indoor confinement duration across all respondents</div>
+      <div style="position:relative;height:210px;">
+        <canvas id="daysChart" role="img" aria-label="Bar chart of days indoors categories">Go out every day: 52408; 1-14 days: 57598; 15-30 days: 47074; 31-60 days: 54992; More than 2 months: 49256</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Increasing stress levels</div>
+      <div class="chart-sub">68.5% report confirmed or possible rising stress</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#E24B4A"></span>Yes 33.8%</span>
+        <span><span class="legend-dot" style="background:#EF9F27"></span>Maybe 34.7%</span>
+        <span><span class="legend-dot" style="background:#639922"></span>No 31.5%</span>
+      </div>
+      <div style="position:relative;height:200px;">
+        <canvas id="stressChart" role="img" aria-label="Doughnut: Yes 88423, Maybe 90697, No 82208">Yes: 88423, Maybe: 90697, No: 82208</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Care options awareness</div>
+      <div class="chart-sub">Only 1 in 3 has confirmed access to care</div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#3266ad"></span>Yes 32.2%</span>
+        <span><span class="legend-dot" style="background:#EF9F27"></span>Not sure 26.1%</span>
+        <span><span class="legend-dot" style="background:#73726c"></span>No 41.7%</span>
+      </div>
+      <div style="position:relative;height:200px;">
+        <canvas id="careChart" role="img" aria-label="Pie: Yes 84097, Not sure 68259, No 108972">Yes: 84097, Not sure: 68259, No: 108972</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card full">
+      <div class="chart-title">Top countries by respondents</div>
+      <div class="chart-sub">USA represents 59.1% of all survey responses</div>
+      <div style="position:relative;height:240px;">
+        <canvas id="countryChart" role="img" aria-label="Horizontal bar of top 8 countries">USA 154478, UK 47878, Canada 14177, Netherlands 5639, Ireland 5128, Germany 4615, Australia 3544, India 2565</canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Key Insights -->
+  <div class="insights-title">Key Insights</div>
+  <div class="insights">
+    <div class="insight danger">
+      <div class="insight-tag">Treatment gap</div>
+      <div class="insight-text">50.7% of people with <strong>high mood swings</strong> are still untreated — the single largest unmet care need in this dataset.</div>
+    </div>
+    <div class="insight info">
+      <div class="insight-tag">Gender disparity</div>
+      <div class="insight-text">Women are <strong>23 percentage points</strong> more likely to seek treatment (69.4% vs 46.4%) despite representing only 11.7% of respondents.</div>
+    </div>
+    <div class="insight warn">
+      <div class="insight-tag">Care access gap</div>
+      <div class="insight-text"><strong>41.7%</strong> have no care options and 26.1% are unsure — meaning only 1 in 3 respondents has confirmed access to mental health support.</div>
+    </div>
+    <div class="insight warn">
+      <div class="insight-tag">Social withdrawal</div>
+      <div class="insight-text">41% of respondents spent between 1 month and 2+ months indoors, signalling widespread social isolation and withdrawal.</div>
+    </div>
+    <div class="insight good">
+      <div class="insight-tag">Stress near-universal</div>
+      <div class="insight-text">Only <strong>31.5%</strong> report no increasing stress — nearly 7 in 10 are experiencing or possibly experiencing escalating stress.</div>
+    </div>
+    <div class="insight good">
+      <div class="insight-tag">Hereditary risk</div>
+      <div class="insight-text">38% report a family history of mental illness — a consistent hereditary risk factor present across all occupation groups in the dataset.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Mental Health Survey Dataset &bull; 261,328 responses &bull; Visualised with Chart.js &bull; Built by [Your Name]
+  </div>
+
+</div>
+
+<script>
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const grid = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+  const tick = isDark ? '#aaa' : '#666';
+  const base = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.toLocaleString() } }
+    }
+  };
+
+  // Gender donut
+  new Chart(document.getElementById('genderChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Male', 'Female'],
+      datasets: [{ data: [230614, 30714], backgroundColor: ['#3266ad', '#D4537E'], borderWidth: 0 }]
+    },
+    options: { ...base, cutout: '65%' }
+  });
+
+  // Treatment by gender stacked bar
+  new Chart(document.getElementById('treatGenderChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Male', 'Female'],
+      datasets: [
+        { label: 'Treated', data: [46.4, 69.4], backgroundColor: ['#3266ad', '#3266ad'], borderRadius: 4 },
+        { label: 'Not treated', data: [53.6, 30.6], backgroundColor: ['#B5D4F4', '#B5D4F4'], borderRadius: 4 }
+      ]
+    },
+    options: {
+      ...base,
+      scales: {
+        x: { stacked: true, ticks: { color: tick }, grid: { color: grid } },
+        y: { stacked: true, max: 100, ticks: { color: tick, callback: v => v + '%' }, grid: { color: grid } }
+      }
+    }
+  });
+
+  // Occupation horizontal bar
+  new Chart(document.getElementById('occChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Housewife', 'Corporate', 'Student', 'Others', 'Business'],
+      datasets: [{
+        data: [60081, 55622, 54207, 47428, 43990],
+        backgroundColor: ['#3266ad', '#5DCAA5', '#D4537E', '#EF9F27', '#7F77DD'],
+        borderRadius: 4,
+        barThickness: 26
+      }]
+    },
+    options: {
+      ...base,
+      indexAxis: 'y',
+      scales: {
+        x: { ticks: { color: tick, callback: v => (v / 1000).toFixed(0) + 'K' }, grid: { color: grid } },
+        y: { ticks: { color: tick }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Mood pie
+  new Chart(document.getElementById('moodChart'), {
+    type: 'pie',
+    data: {
+      labels: ['High', 'Medium', 'Low'],
+      datasets: [{ data: [81920, 90215, 89193], backgroundColor: ['#E24B4A', '#EF9F27', '#639922'], borderWidth: 0 }]
+    },
+    options: { ...base }
+  });
+
+  // Days indoors bar
+  new Chart(document.getElementById('daysChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Go out every day', '1–14 days', '15–30 days', '31–60 days', '2+ months'],
+      datasets: [{
+        data: [52408, 57598, 47074, 54992, 49256],
+        backgroundColor: '#378ADD',
+        borderRadius: 4,
+        barThickness: 52
+      }]
+    },
+    options: {
+      ...base,
+      scales: {
+        x: { ticks: { color: tick, maxRotation: 0 }, grid: { display: false } },
+        y: { ticks: { color: tick, callback: v => (v / 1000).toFixed(0) + 'K' }, grid: { color: grid } }
+      }
+    }
+  });
+
+  // Stress doughnut
+  new Chart(document.getElementById('stressChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Yes', 'Maybe', 'No'],
+      datasets: [{ data: [88423, 90697, 82208], backgroundColor: ['#E24B4A', '#EF9F27', '#639922'], borderWidth: 0 }]
+    },
+    options: { ...base, cutout: '60%' }
+  });
+
+  // Care options pie
+  new Chart(document.getElementById('careChart'), {
+    type: 'pie',
+    data: {
+      labels: ['Yes', 'Not sure', 'No'],
+      datasets: [{ data: [84097, 68259, 108972], backgroundColor: ['#3266ad', '#EF9F27', '#73726c'], borderWidth: 0 }]
+    },
+    options: { ...base }
+  });
+
+  // Country horizontal bar
+  new Chart(document.getElementById('countryChart'), {
+    type: 'bar',
+    data: {
+      labels: ['USA', 'UK', 'Canada', 'Netherlands', 'Ireland', 'Germany', 'Australia', 'India'],
+      datasets: [{
+        data: [154478, 47878, 14177, 5639, 5128, 4615, 3544, 2565],
+        backgroundColor: '#5DCAA5',
+        borderRadius: 4,
+        barThickness: 22
+      }]
+    },
+    options: {
+      ...base,
+      indexAxis: 'y',
+      scales: {
+        x: { ticks: { color: tick, callback: v => (v / 1000).toFixed(0) + 'K' }, grid: { color: grid } },
+        y: { ticks: { color: tick }, grid: { display: false } }
+      }
+    }
+  });
+</script>
+</body>
+</html>
